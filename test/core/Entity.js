@@ -11,7 +11,7 @@
         setup: function () {
             stop();
 
-            gladius.create( { debug: true }, function( instance ) {       
+            gladius.create( { debug: true }, function( instance ) {
                 engine = instance;
                 start();
             });
@@ -37,13 +37,14 @@
 
         var entity1 = new engine.core.Entity();
         ok(
-                entity1.id === 1,
+                // id === 1 is given to configurator
+                entity1.id === 2,
                 'First entity id is 1.'
         );
 
         var entity2 = new engine.core.Entity();
         ok(
-                entity2.id === 2,
+                entity2.id === 3,
                 'Second entity id is 2.'
         );
     });
