@@ -8,14 +8,18 @@ define( function ( require ) {
         Configurator = require( './core/configurator' ),
         ThreadPool = require( './core/threading/pool' ),
         Scheduler = require( './core/scheduler' ),
-        Event = require( './core/event' ),
+        Delegate = require( './core/delegate' ),
         Timer = require( './core/timer' ),
+        Event = require( './core/event' ),
+        Queue = require( 'common/queue' ),
 
     // Services
-        Graphics = require( './graphics/service' ),
+        Service = require( 'base/service' ),
+        // Graphics = require( './graphics/service' ),
+        // ActionLists = require( './behavior/action-list/service' ),
 
     // Core
-        Scene = require( './core/scene' ),
+        Space = require( './core/space' ),
         Component = require( './core/component' ),
         Entity = require( './core/entity' ),
         Transform = require( './core/component/transform' ),
@@ -46,6 +50,11 @@ define( function ( require ) {
 
         this.options = options || {};
         this.debug = this.options.debug ? console.log : function () {};
+
+        this.assert = function( condition, message ) {
+            if( !condition )
+                throw 'Assertion failed: ' + message;
+        };
 
         // Get configurator up before anything else
         var extraConfig = {};
@@ -90,7 +99,7 @@ define( function ( require ) {
             var _time = {
                 real: new _scheduler.Timer(),
                 simulation: new _scheduler.Timer()
-            }
+            };
 
             var _threadPool = new ThreadPool({
                 size: 2
@@ -101,10 +110,10 @@ define( function ( require ) {
                 }
             });
 
-            var _sceneAdded = new Event();
-            Object.defineProperty( that, 'sceneAdded', {
+            var _spaceAdded = new Delegate();
+            Object.defineProperty( that, 'spaceAdded', {
                 get: function() {
-                    return _sceneAdded;
+                    return _spaceAdded;
                 }
             });
 
@@ -116,12 +125,19 @@ define( function ( require ) {
                 // Expose engine objects, partially
                 // applying items needed for their constructors.
                 lang.extend(this, {
-                    Event: Event,
+                    Delegate: Delegate,
+                    common: {
+                            Queue: Queue
+                    },
+                    base: {
+                            Service: Service( this )
+                    },
                     core: {
                         Entity: Entity( this ),
                         Component: Component,
                         Resource: null,
-                        Scene: Scene( this ),
+                        Space: Space( this ),
+                        Event: Event,
                         component: {
                             Transform: Transform( this )
                         },
@@ -134,40 +150,22 @@ define( function ( require ) {
                 // Create a property on the instance's service object for
                 // each service, based on the name given the services options object.
                 var subs = this.service = {},
-                i;
+                    i;
                 for (i = 0; i < arguments.length; i++) {
                     var s = arguments[i]( this );
                     subs[ sNames[i] ] = new s();
                 }
 
-                // Hmm, graphics is also on this, instead of always
-                // referenced on service? sound too?
-                this.graphics = subs.graphics;
-                // this.physics = subs.physics;
-                // this.sound = subs.sound;
-
-                this.assert = function( condition, message ) {
-                    if( !condition )
-                        throw 'Assertion failed: ' + message;
-                }
-
-                // Create music Speaker singleton
-                // this.sound.music = new this.component.Speaker();
-
-                // Create input handlers
-                // this.keyboardInput = new KeyboardInput( this.messenger, window );
-                if (subs.graphics && subs.graphics.getCanvas) {
-                    // this.mouseInput = new MouseInput( this.messenger, subs.graphics.getCanvas() );
-                    // this.touchInput = new TouchInput( this.messenger, subs.graphics.getCanvas() );
-                }
+                lang.extend( this, subs );
 
                 // run user-specified setup function
                 if ( this.options.setup ) {
                     this.options.setup( this );
                 }
 
-                if ( callback ) {
-                    callback( this );
+                // Let caller know the engine instance is ready.
+                if (callback) {
+                    callback(this);
                 }
             }));
         };
@@ -177,7 +175,6 @@ define( function ( require ) {
             callback: initialize,
             error: initialize
         } );
-
     }; //Gladius
 
     // Set up common properties for all engine instances
